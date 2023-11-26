@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from All_Rollout import val_Rollout, AllRolloutModel
 from Our_Dataset import Our_Dataset
-from common import save_prediction
+from common import save_prediction, get_logger
 # from simple_net.My_latent import MyLatentModel
 from simple_net.Latent import LatentModel
 
@@ -22,6 +22,11 @@ parser = argparse.ArgumentParser(description="Training Latent Model")
 parser.add_argument("--batch_size", type=int, default=5, help="Training batch size")
 parser.add_argument("--epochs", type=int, default=1000, help="Number of training epochs")
 
+parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
+
+parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
+parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
+parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
 parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
 
 parser.add_argument("--feature_dim", type=float, default=256)
@@ -71,6 +76,12 @@ def main():
 
     prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr)
 
+    logger = get_logger()
+    logger.info('Epoch={}\t lr={}\t'.format(opt.epochs, opt.lr))
+    logger.info('Recon Lambda constraint_bound={}\t annealing_rate={}\t'.
+                format(net.scheduler_recon.constraint_bound, net.scheduler_recon.annealing_rate))
+    logger.info('Classification Lambda constraint_bound={}\t annealing_rate={}\t'.
+                format(net.scheduler_classifier.constraint_bound, net.scheduler_classifier.annealing_rate))
     # training
     running_loss = 0
     train_loss = []
@@ -232,8 +243,8 @@ def main():
     mse = mean_squared_error(label_states, pred_states)
     rmse = np.sqrt(mean_squared_error(label_states, pred_states))
     r2 = r2_score(label_states, pred_states)
-    print('auc_score={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
-          format(auc_score, mse, rmse, r2))
+    logger.info('auc_score={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
+                format(auc_score, mse, rmse, r2))
 
 
 if __name__ == "__main__":
