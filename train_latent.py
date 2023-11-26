@@ -24,11 +24,6 @@ parser.add_argument("--epochs", type=int, default=1000, help="Number of training
 
 parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
 
-parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
-parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
-parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
-parser.add_argument("--lr", type=float, default=1e-4, help="Initial learning rate")
-
 parser.add_argument("--feature_dim", type=float, default=256)
 parser.add_argument("--z1_dim", type=float, default=32)
 parser.add_argument("--z2_dim", type=float, default=256)
