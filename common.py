@@ -2,8 +2,31 @@ import math
 import numpy as np
 import torch
 from torch import nn
-
 from utils import calculate_kl_divergence
+import logging
+
+
+def get_logger():
+    logger = logging.getLogger()
+    logger.setLevel(level=logging.INFO)
+    # formatter = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+    file_formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s:\t %(message)s')
+    stream_formatter = logging.Formatter('%(asctime)s %(name)s %(levelname)s:\t %(message)s')
+    if not logger.handlers:
+        # change file_path
+        file_handler = logging.FileHandler(filename='/home/fan/Immunotherapy/logger.txt',
+                                           mode='a+',
+                                           encoding='utf-8')
+        file_handler.setLevel(level=logging.INFO)
+        file_handler.setFormatter(file_formatter)
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(level=logging.INFO)
+        stream_handler.setFormatter(stream_formatter)
+
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
+    return logger
 
 
 def save_prediction(model, data_loader):
