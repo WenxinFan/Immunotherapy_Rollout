@@ -224,6 +224,10 @@ def main():
 
     fpr, tpr, thresholds = roc_curve(label_acts, pred_acts)
     auc_score = roc_auc_score(label_acts, pred_acts)
+    gmeans = torch.sqrt(tpr * (1 - fpr))
+    # Find the optimal threshold
+    index = torch.argmax(gmeans)
+    optimal_threshold = thresholds[index]
     plt.plot(fpr, tpr, label=f'AUC = {auc_score:.4f}')
     plt.plot([0, 1], [0, 1], linestyle='--', color='r', label='Random Classifier')
     plt.xlabel('False Positive Rate')
@@ -241,8 +245,8 @@ def main():
     mse = mean_squared_error(label_states, pred_states)
     rmse = np.sqrt(mean_squared_error(label_states, pred_states))
     r2 = r2_score(label_states, pred_states)
-    logger.info('auc_score={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
-                format(auc_score, mse, rmse, r2))
+    logger.info('auc_score={:.5f}\t optimal_threshold={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
+                format(auc_score, optimal_threshold, mse, rmse, r2))
 
 
 if __name__ == "__main__":
