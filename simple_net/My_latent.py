@@ -235,7 +235,7 @@ class MyLatentModel(nn.Module):
         z1_ = [z1]
         z2_ = [z2]
 
-        for t in range(1, actions_.size(1) + 1):
+        for t in range(1, actions_.size(1)+1):
             # q(z1(t) | feat(t), z2(t-1), a(t-1))
             z1_mean, z1_std = self.z1_posterior(torch.cat([features_[:, t], z2, actions_[:, t - 1]], dim=1))
             z1 = z1_mean + torch.randn_like(z1_std) * z1_std
@@ -279,14 +279,14 @@ class MyLatentModel(nn.Module):
 
     def forward(self, state_, info_, action_):
         # Calculate the sequence of features.
-        # state.shape = (B, 6, 12)
+        # state.shape = (B, 5, 12)
         initial_state = torch.permute(state_[:, 0:1, :], [0, 2, 1])
+        # (B, 1, 256)
         initial_feature_ = self.first_encoder(info_[:, :, 0], initial_state[:, :, 0])
-        # (B, 256)
         # (B, length-1, 256)
         feature_ = self.encoder(state_[:, 1:, :])
+        # (B, length, 256)
         all_feature = torch.cat([torch.unsqueeze(initial_feature_, dim=1), feature_], dim=1)
-        # Sample from latent variable model.
         # z1_.shape = (12, 6, 32) z2_.shape = (12, 6, 256)
         z1_mean_post_, z1_std_post_, z1_, z2_ = self.sample_posterior(all_feature, action_)
         z1_mean_pri_, z1_std_pri_ = self.sample_prior(action_, z2_)
@@ -303,16 +303,22 @@ class MyLatentModel(nn.Module):
         loss_kld = calculate_kl_divergence(z1_mean_post_, z1_std_post_, z1_mean_pri_, z1_std_pri_).mean(dim=0).sum()
 
         # Prediction loss of regression.
-        pred_noise_ = (label[:, :, 1:] - pred_mean[:, 1:, 1:]) / (pred_std[:, 1:, 1:] + 1e-8)
-        log_likelihood_ = (-0.5 * pred_noise_.pow(2) - pred_std[:, 1:, 1:].log()) - 0.5 * math.log(2 * math.pi)
+        pred_noise_ = (label[:, :, 1:] - pred_mean[:, :, 1:]) / (pred_std[:, :, 1:] + 1e-8)
+        log_likelihood_ = (-0.5 * pred_noise_.pow(2) - pred_std[:, :, 1:].log()) - 0.5 * math.log(2 * math.pi)
         loss_recon = -log_likelihood_.mean(dim=0).sum()
 
         # classification loss
-        pred_act = pred_mean[:, 1:, 0:1] + torch.randn_like(pred_std[:, 1:, 0:1]) * pred_std[:, 1:, 0:1]
+        pred_act = pred_mean[:, :, 0:1] + torch.randn_like(pred_std[:, :, 0:1]) * pred_std[:, :, 0:1]
         binary_loss = nn.BCEWithLogitsLoss()
-        loss_classification = binary_loss(pred_act[:, -1, 0:1], label[:, -1, 0:1])
+        loss_classification = binary_loss(pred_act[:, :, 0:1], label[:, :, 0:1])
 
-        return loss_kld, loss_recon, loss_classification
+        loss = (
+                1000 * loss_recon
+                + 1 * loss_kld
+                + 1 * loss_classification
+        )
+
+        return loss_kld, loss_recon, loss_classification, loss
 
 
 class MyEncoder(nn.Module):
