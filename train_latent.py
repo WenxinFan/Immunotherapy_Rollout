@@ -69,14 +69,16 @@ def main():
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
 
-    prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr)
-
     logger = get_logger()
     logger.info('Epoch={}\t lr={}\t'.format(opt.epochs, opt.lr))
     logger.info('Recon Lambda constraint_bound={}\t annealing_rate={}\t'.
                 format(net.scheduler_recon.constraint_bound, net.scheduler_recon.annealing_rate))
     logger.info('Classification Lambda constraint_bound={}\t annealing_rate={}\t'.
                 format(net.scheduler_classifier.constraint_bound, net.scheduler_classifier.annealing_rate))
+    prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr) \
+             + '_Rcb' + str(net.scheduler_recon.constraint_bound) + '_Rar' + str(net.scheduler_recon.annealing_rate) \
+             + 'Ccb' + str(net.scheduler_classifier.constraint_bound) + '_Car' + str(net.scheduler_classifier.annealing_rate)
+
     # training
     running_loss = 0
     train_loss = []
@@ -123,17 +125,18 @@ def main():
             loss_classify_list.append(loss_classification.item())
 
         # at the end of each epoch
-        print('Epoch ' + str(epoch + 1) + ' / ' + str(opt.epochs))
         loss = np.mean(loss_list)
         running_loss += loss
         train_loss.append(loss)
         recon_list.append(np.mean(loss_recon_list))
         kl_list.append(np.mean(loss_kld_list))
         classify_list.append(np.mean(loss_classify_list))
-        print('Loss: ' + str(loss))
-        print('Loss KL Distance: ' + str(np.mean(loss_kld_list)))
-        print('Loss Regression: ' + str(np.mean(loss_recon_list)))
-        print('Loss Classification: ' + str(np.mean(loss_classify_list)))
+        if epoch % 50 == 0:
+            print('Epoch ' + str(epoch + 1) + ' / ' + str(opt.epochs))
+            print('Loss: ' + str(loss))
+            print('Loss KL Distance: ' + str(np.mean(loss_kld_list)))
+            print('Loss Regression: ' + str(np.mean(loss_recon_list)))
+            print('Loss Classification: ' + str(np.mean(loss_classify_list)))
 
         if loss < min_loss:
             # save model
