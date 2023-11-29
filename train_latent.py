@@ -14,9 +14,10 @@ from Our_Dataset import Our_Dataset
 from common import save_prediction, get_logger
 # from simple_net.My_latent import MyLatentModel
 from simple_net.Latent import LatentModel
+from simple_net.My_latent import MyLatentModel
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5, 6, 7, 8, 9"
+os.environ["CUDA_VISIBLE_DEVICES"] = "6, 7, 8, 9"
 
 parser = argparse.ArgumentParser(description="Training Latent Model")
 parser.add_argument("--batch_size", type=int, default=5, help="Training batch size")
@@ -46,7 +47,7 @@ def main():
     dataset_test = Our_Dataset(data_path, data_type='test')
 
     # training data loader
-    device_id = [0, 1, 2, 3, 4, 5]
+    device_id = [0, 1, 2, 3]
     b_size = len(device_id) * opt.batch_size
     train_loader = DataLoader(dataset=dataset_train, num_workers=32, batch_size=b_size, shuffle=True)
     print('{} training samples'.format(len(dataset_train)))
@@ -59,7 +60,7 @@ def main():
 
     # Build model
     net = LatentModel(opt.state_shape, opt.info_shape, opt.action_shape, opt.feature_dim, opt.z1_dim, opt.z2_dim,
-                      hidden_units=(256, 256))
+                      hidden_units=(512, 512))
     criterion = net.getloss
 
     # Move to GPU
@@ -71,13 +72,15 @@ def main():
 
     logger = get_logger()
     logger.info('Epoch={}\t lr={}\t'.format(opt.epochs, opt.lr))
-    logger.info('Recon Lambda constraint_bound={}\t annealing_rate={}\t'.
-                format(net.scheduler_recon.constraint_bound, net.scheduler_recon.annealing_rate))
+    # logger.info('Recon constraint_bound={}\t Classification constraint_bound={}\t'.format(10, 1))
+    logger.info('Recon Lambda constraint_bound={}\t annealing_rate={}\t'. format(
+    net.scheduler_recon.constraint_bound, net.scheduler_recon.annealing_rate))
     logger.info('Classification Lambda constraint_bound={}\t annealing_rate={}\t'.
                 format(net.scheduler_classifier.constraint_bound, net.scheduler_classifier.annealing_rate))
-    prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr) \
+    prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr)  \
              + '_Rcb' + str(net.scheduler_recon.constraint_bound) + '_Rar' + str(net.scheduler_recon.annealing_rate) \
-             + 'Ccb' + str(net.scheduler_classifier.constraint_bound) + '_Car' + str(net.scheduler_classifier.annealing_rate)
+             + '_Ccb' + str(net.scheduler_classifier.constraint_bound) + '_Car' + str(net.scheduler_classifier.annealing_rate)
+    # prefix = 'epoch' + str(opt.epochs) + '_lr' + str(opt.lr) + '_Rcb10' + '_Ccb1'
 
     # training
     running_loss = 0
@@ -113,7 +116,7 @@ def main():
             # [B, 4, 1]
             info = info.cuda()
 
-            # {z1_post[B, 5, 32], [B, 5, 32], z1_pri[B, 5, 32], [B, 5, 32], pred_mean[B, 5, 12], pred_std[B, 5, 12]}
+            # {z1_post[B, 5, 32], [B, 5, 32], z1_pri[B, 5, 32], [B, 5, 32], pred_mean[B, 5, 13], pred_std[B, 5, 13]}
             y = model(x_states, info, acts)
 
             loss_kld, loss_recon, loss_classification, loss = criterion(y[0], y[1], y[2], y[3], y[4], y[5], y_all)
@@ -131,7 +134,7 @@ def main():
         recon_list.append(np.mean(loss_recon_list))
         kl_list.append(np.mean(loss_kld_list))
         classify_list.append(np.mean(loss_classify_list))
-        if epoch % 50 == 0:
+        if epoch % 100 == 0:
             print('Epoch ' + str(epoch + 1) + ' / ' + str(opt.epochs))
             print('Loss: ' + str(loss))
             print('Loss KL Distance: ' + str(np.mean(loss_kld_list)))
@@ -139,6 +142,7 @@ def main():
             print('Loss Classification: ' + str(np.mean(loss_classify_list)))
 
         if loss < min_loss:
+            min_loss = loss
             # save model
             model_path = opt.model_path
             if not os.path.exists(model_path):
@@ -165,30 +169,30 @@ def main():
     plt.close()
 
     # plt.plot(kl_list, 'g-', label='KL Divergence Lambda')
-    plt.plot(net.lambda_recon_list, 'g-', label='Regression Lambda')
-    # plt.plot(classify_list, 'b-', label='Classification Lambda')
-    plt.title('Regression Lambda')
-    # plt.legend()
-    plt.savefig(save_pic + prefix + '_reconLambda.png', bbox_inches='tight', pad_inches=0.0)
-    plt.show()
-    plt.close()
+    # plt.plot(net.lambda_recon_list, 'g-', label='Regression Lambda')
+    # # plt.plot(classify_list, 'b-', label='Classification Lambda')
+    # plt.title('Regression Lambda')
+    # # plt.legend()
+    # plt.savefig(save_pic + prefix + '_reconLambda.png', bbox_inches='tight', pad_inches=0.0)
+    # plt.show()
+    # plt.close()
+    #
+    # plt.plot(classify_list, 'b', label='Classification loss')
+    # plt.title('Classification Loss')
+    # plt.savefig(save_pic + prefix + '_classifyLoss.png', bbox_inches='tight', pad_inches=0.0)
+    # plt.show()
+    # plt.close()
+    #
+    # plt.plot(net.lambda_classify_list, 'b-', label='Classification Lambda')
+    # plt.title('Classification Lambda')
+    # # plt.legend()
+    # plt.savefig(save_pic + prefix + '_classifyLambda.png', bbox_inches='tight', pad_inches=0.0)
+    # plt.show()
+    # plt.close()
 
-    plt.plot(classify_list, 'b', label='Classification loss')
-    plt.title('Classification Loss')
-    plt.savefig(save_pic + prefix + '_classifyLoss.png', bbox_inches='tight', pad_inches=0.0)
-    plt.show()
-    plt.close()
-
-    plt.plot(net.lambda_classify_list, 'b-', label='Classification Lambda')
-    plt.title('Classification Lambda')
-    # plt.legend()
-    plt.savefig(save_pic + prefix + '_classifyLambda.png', bbox_inches='tight', pad_inches=0.0)
-    plt.show()
-    plt.close()
-
-    test_model_path = opt.model_path + '/' + prefix + '_slac.pth'
+    test_model_path = opt.model_path + prefix + '_slac.pth'
     test_net = AllRolloutModel(opt.state_shape, opt.info_shape, opt.action_shape, opt.feature_dim, opt.z1_dim,
-                               opt.z2_dim, hidden_units=(256, 256))
+                               opt.z2_dim, hidden_units=(512, 512))
     test_model = nn.DataParallel(test_net, device_ids=device_id).cuda()
     test_model.load_state_dict(torch.load(test_model_path))
     test_model.eval()
@@ -224,10 +228,10 @@ def main():
 
     fpr, tpr, thresholds = roc_curve(label_acts, pred_acts)
     auc_score = roc_auc_score(label_acts, pred_acts)
-    gmeans = torch.sqrt(tpr * (1 - fpr))
-    # Find the optimal threshold
-    index = torch.argmax(gmeans)
-    optimal_threshold = thresholds[index]
+    # gmeans = math.sqrt(tpr * (1 - fpr))
+    # # Find the optimal threshold
+    # index = max(gmeans)
+    # optimal_threshold = thresholds[index]
     plt.plot(fpr, tpr, label=f'AUC = {auc_score:.4f}')
     plt.plot([0, 1], [0, 1], linestyle='--', color='r', label='Random Classifier')
     plt.xlabel('False Positive Rate')
@@ -245,8 +249,8 @@ def main():
     mse = mean_squared_error(label_states, pred_states)
     rmse = np.sqrt(mean_squared_error(label_states, pred_states))
     r2 = r2_score(label_states, pred_states)
-    logger.info('auc_score={:.5f}\t optimal_threshold={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
-                format(auc_score, optimal_threshold, mse, rmse, r2))
+    logger.info('auc_score={:.5f}\t mse={:.5f}\t rmse={:.5f}\t r2={:.5f}\t'.
+                format(auc_score, mse, rmse, r2))
 
 
 if __name__ == "__main__":

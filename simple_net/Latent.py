@@ -27,7 +27,8 @@ class LatentModel(nn.Module):
             # constraint_bound是loss的平稳值 kl_lambda先设为常数 如果lambda上下振荡 那么annealing需要调小一点
             # reconstruction的学习率可以设小一点，constraint_bound也相对设小一点，push网络的学习
             # classify的constraint_bound可能需要调高一些
-            scheduler_recon=ConstrainedExponentialSchedulerMaLagrange(constraint_bound=500, annealing_rate=1e-4),
+            # 先手动调参，记录结果较好的参数
+            scheduler_recon=ConstrainedExponentialSchedulerMaLagrange(constraint_bound=1, annealing_rate=1e-4),
             scheduler_kl=ConstantScheduler(lam=1),
             # scheduler_kl=ConstrainedExponentialSchedulerMaLagrange(constraint_bound=500, annealing_rate=1e-4,
             #                                                        lower_bound_lam=0),
@@ -200,12 +201,14 @@ class LatentModel(nn.Module):
         loss_kld = calculate_kl_divergence(z1_mean_post_, z1_std_post_, z1_mean_pri_, z1_std_pri_).mean(dim=0).sum()
 
         # Prediction loss of regression.
-        pred_noise_ = (label[:, :, 1:] - pred_mean[:, :, 1:]) / (pred_std[:, :, 1:] + 1e-8)
-        log_likelihood_ = (-0.5 * pred_noise_.pow(2) - pred_std[:, :, 1:].log()) - 0.5 * math.log(2 * math.pi)
-        loss_recon = -log_likelihood_.mean(dim=0).sum()
+        # pred_noise_ = (label[:, :, 1:] - pred_mean[:, :, 1:]) / (pred_std[:, :, 1:] + 1e-8)
+        # log_likelihood_ = (-0.5 * pred_noise_.pow(2) - pred_std[:, :, 1:].log()) - 0.5 * math.log(2 * math.pi)
+        # loss_recon = -log_likelihood_.mean(dim=0).sum()
+        pred = pred_mean + torch.randn_like(pred_std) * pred_std
+        loss_recon = torch.mean(torch.pow((pred[:, :, 1:] - label[:, :, 1:]), 2))
 
         # classification loss 每一步的action都需要算loss
-        pred_act = pred_mean[:, :, 0:1] + torch.randn_like(pred_std[:, :, 0:1]) * pred_std[:, :, 0:1]
+        pred_act = pred[:, :, 0:1]
         binary_loss = nn.BCEWithLogitsLoss()
         loss_classification = binary_loss(pred_act, label[:, :, 0:1])
 
@@ -229,8 +232,8 @@ class LatentModel(nn.Module):
         )
 
         # loss = (
-        #         0.01 * loss_recon
-        #         + 0.1 * loss_kld
+        #         10 * loss_recon
+        #         + 1 * loss_kld
         #         + 1 * loss_classification
         # )
 
